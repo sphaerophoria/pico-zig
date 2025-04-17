@@ -1,4 +1,87 @@
 {
+    "ClkPeriCtrl": {
+        "fields": {
+            "auxSrc": {
+                "type": "AuxSrc",
+                "offset": [5, 7]
+            },
+            "kill": 10,
+            "enable": 11
+        },
+        "enums": {
+            "AuxSrc": {
+                "bit_size": 3,
+                "fields": {
+                    "sys": 0,
+                    "pll_sys": 1,
+                    "xosc": 4
+                }
+            }
+        }
+    },
+    "UartData": {
+        "fields": {
+            "data": [0, 7],
+            "fe": 8,
+            "pe": 9,
+            "be": 10,
+            "oe": 11
+        }
+    },
+    "UartCr": {
+        "fields": {
+            "ctsen": 15,
+            "rtsen": 14,
+            "out2": 13,
+            "out1": 12,
+            "rts": 11,
+            "dtr": 10,
+            "rxe": 9,
+            "txe": 8,
+            "lbe": 7,
+            "sirlp": 2,
+            "siren": 1,
+            "uarten": 0
+        }
+    },
+    "UartLcrH": {
+        "fields": {
+            "sps": 7,
+            "wlen": {
+                "type": "Wlen",
+                "offset": [5, 6]
+            },
+            "fen": 4,
+            "stp2": 3,
+            "eps": 2,
+            "pen": 1,
+            "brk": 0
+        },
+        "enums": {
+            "Wlen": {
+                "bit_size": 2,
+                "fields": {
+                    "eight": 3,
+                    "seven": 2,
+                    "six": 1,
+                    "five": 0
+                }
+            }
+        }
+    },
+    "UartFr": {
+        "fields": {
+            "ri": 8,
+            "txfe": 7,
+            "rxff": 6,
+            "txff": 5,
+            "rxfe": 4,
+            "busy": 3,
+            "dcd": 2,
+            "dsr": 1,
+            "cts": 0
+        }
+    },
     "GpioCtrl": {
         "fields": {
             "irqover": [28, 29],
@@ -24,6 +107,59 @@
         "fields": {
             "uart0": 22,
             "io_bank0": 5
+        }
+    },
+    "XoscCtrl": {
+        "fields": {
+            "freq_range": {
+                "type": "FreqRange",
+                "offset": [0, 11]
+            },
+            "enable": {
+                "type": "Enable",
+                "offset": [12, 23]
+            }
+        },
+        "enums": {
+            "FreqRange": {
+                "bit_size": 12,
+                "fields": {
+                    "mhz_1_15": 2720
+                }
+            },
+            "Enable": {
+                "bit_size": 12,
+                "fields": {
+                    "disabled": 3358,
+                    "enabled": 4011
+                }
+            }
+
+        }
+    },
+    "XoscStartup": {
+        "fields": {
+            "delay": [0, 13],
+            "x4": 20
+        }
+    },
+    "XoscStatus": {
+        "fields": {
+            "stable": 31,
+            "badwrite": 24,
+            "enabled": 12,
+            "freq_range": {
+                "type": "FreqRange",
+                "offset": [0, 1]
+            }
+        },
+        "enums": {
+            "FreqRange": {
+                "bit_size": 2,
+                "fields": {
+                    "mhz_1_15": 0
+                }
+            }
         }
     }
 }
