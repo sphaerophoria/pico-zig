@@ -1,0 +1,29 @@
+{
+    "GpioCtrl": {
+        "fields": {
+            "irqover": [28, 29],
+            "inover": [16, 17],
+            "oeover": [12, 13],
+            "outover": [8, 9],
+            "funcsel": {
+                "type": "GpioFuncSel",
+                "offset": [0, 4]
+            }
+        },
+        "enums": {
+            "GpioFuncSel": {
+                "bit_size": 5,
+                "fields": {
+                    "uart": 2,
+                    "sio": 5
+                }
+            }
+        }
+    },
+    "Reset": {
+        "fields": {
+            "uart0": 22,
+            "io_bank0": 5
+        }
+    }
+}

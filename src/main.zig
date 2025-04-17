@@ -1,14 +1,14 @@
 const std = @import("std");
+const registers = @import("registers");
+
+
+
 
 const IoBank0 = struct {
     const base = 0x40014000;
 
-    const GpioFunc = struct {
-        pub const sio = 5;
-    };
-
-    fn gpioCtrl(num: u32) *volatile u32 {
-        return @ptrFromInt(base + 4 + 8 * num);
+    fn gpioCtrl(num: u32) registers.GpioCtrl {
+        return .init(base + 4 + 8 * num);
     }
 };
 
@@ -19,10 +19,11 @@ const RingOscillator = struct {
 
 const Reset = struct {
     const base = 0x4000c000;
-    const reset: *volatile u32 = @ptrFromInt(base + 0);
+    const reset = registers.Reset.init(base + 0);
 
     const ResetMask = struct {
         pub const io_bank0 = 1 << 5;
+        pub const uart0 = 1 << 22;
     };
 };
 
@@ -53,7 +54,7 @@ fn regFromAddress(addy: u32) *volatile u32 {
 
 fn initLed() void {
     // Take sio out of reset
-    atomicClearRegister(Reset.reset).* = Reset.ResetMask.io_bank0;
+    Reset.reset.atomicClear(.io_bank0);
 
     // Set led pin as output
     Sio.gpio_oe_set.* = 1 << pico_default_led_pin;
@@ -61,8 +62,7 @@ fn initLed() void {
     // Set initial output to 1
     Sio.gpio_set.* = 1 << pico_default_led_pin;
 
-    //// Set multifunction as SIO, sdk code in gpio_init claims that it's fine to 0 everything else out, even though that seems weird to me
-    IoBank0.gpioCtrl(pico_default_led_pin).* = IoBank0.GpioFunc.sio;
+    IoBank0.gpioCtrl(pico_default_led_pin).modify(.funcsel(.sio));
 }
 
 fn setLed(on: bool) void {
