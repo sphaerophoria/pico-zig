@@ -199,7 +199,7 @@ pub fn DefinitionWriter(comptime Writer: type) type {
                 \\pub const Value = packed struct(u32) {
                 \\    val: u32,
                 \\
-                \\    fn modify(self: *Value, params: WriteParams) void {
+                \\    pub fn modify(self: *Value, params: WriteParams) void {
                 \\        self.val &= ~params.mask;
                 \\        self.val |= params.val;
                 \\    }

@@ -22,16 +22,41 @@ pub fn Uart(comptime base: comptime_int) type {
 
 const Uart0 = Uart(0x40034000);
 
+pub fn I2c(comptime base: comptime_int) type {
+    return struct {
+        const con = registers.IcCon.init(base + 0x00);
+        const tar = registers.IcTar.init(base + 0x04);
+        const data_cmd = registers.IcDataCmd.init(base + 0x10);
+        const enable = registers.IcEnable.init(base + 0x6c);
+        const comp_version: *volatile u32 = @ptrFromInt(base + 0xf8);
+        const ss_scl_lcnt = registers.IcSsSclLCnt.init(base + 0x18);
+        const ss_scl_hcnt = registers.IcSsSclHCnt.init(base + 0x14);
+        const fs_spklen = registers.IcFsSpkLen.init(base + 0xa0);
+    };
+}
+
+const I2c0 = I2c(0x40044000);
+
 const Clocks = struct {
     const base = 0x40008000;
+    const sys_ctrl = registers.ClkSysCtrl.init(base + 0x3c);
+    const sys_selected = registers.ClkSysSelected.init(base + 0x44);
     const peri_ctrl = registers.ClkPeriCtrl.init(base + 0x48);
 };
 
 const IoBank0 = struct {
     const base = 0x40014000;
 
-    fn gpioCtrl(num: u32) registers.GpioCtrl {
+    fn gpioCtrl(num: u32) registers.GpioBankCtrl {
         return .init(base + 4 + 8 * num);
+    }
+};
+
+const PadsBank0 = struct {
+    const base = 0x4001c000;
+
+    fn gpio(num: u32) registers.GpioPadCtrl {
+        return .init(base + 4 + 4 * num);
     }
 };
 
@@ -80,10 +105,6 @@ const Xosc = struct {
         while (status.read().stable() == 0) {}
     }
 };
-
-fn atomicClearRegister(in: *volatile u32) *volatile u32 {
-    return @ptrFromInt(@as(u32, @intFromPtr(in)) + 0x3000);
-}
 
 fn doWait() void {
     for (0..5000) |_| {
@@ -170,10 +191,115 @@ fn uartInit() void {
     );
 }
 
+fn initClkSys() void {
+    Clocks.sys_ctrl.modify(.auxSrc(.xosc));
+    Clocks.sys_ctrl.modify(.src(.aux));
+    while (true) {
+        const selected = Clocks.sys_selected.read();
+        if (selected.aux() == 1 and selected.ref() == 0) {
+            break;
+        }
+    }
+}
+
+fn initI2cMasterMode() void {
+    // 4.3.10.2.1 in rp2040 datasheet, don't ask me why
+
+    var enable_val = I2c0.enable.read();
+    // 1. Disable DW_awp_i2c
+    enable_val.modify(.all(.{
+        .enable = 0,
+        // While we're here, init register in general
+        .tx_cmd_block = 0,
+        .abort = 0,
+    }));
+    I2c0.enable.write(enable_val);
+
+    // 2. Init IC_CON
+    I2c0.con.modify(comptime .combine(&.{
+        .ic_slave_disable(1),
+        .ic_10bitaddr_master(0),
+        .speed(.standard),
+        .master_mode(1),
+        // While we're here, init other fields that sound interesting
+        .tx_empty_ctrl(0),
+        .ic_restart_en(1),
+    }));
+
+
+    // 3. Set target address
+    // Hardcode to EEPROM addy, bottom three bits should be grounded in hw
+    const address: u7 = 0b1010000;
+    I2c0.tar.modify(comptime .combine(&.{
+        .ic_tar(address),
+        // While we're here, init other fields that sound interesting
+        .special(0),
+    }));
+
+    const test_val = I2c0.tar.read();
+    _ = test_val;
+    @breakpoint();
+
+
+    // Initialize clock parameters. This is not specified in the init master
+    // mode chapter, however some (maybe all, i didn't check) parameters only
+    // are writable when the enable bit is 0, so we might as well do it now
+    //
+    // Values stolen from table 450, but multiplied by 4.4 for 12Mhz/2.7Mhz in
+    // table reference values
+    const spike_len = 4;
+    I2c0.fs_spklen.modify(.value(spike_len));
+    // See bullets under table 450 for formulas
+    I2c0.ss_scl_lcnt.modify(.value(13 * 4 - 1));
+    I2c0.ss_scl_hcnt.modify(.value(13 * 4 - (spike_len + 7)));
+
+    // 4. re-enable
+    enable_val.modify(.enable(1));
+    I2c0.enable.write(enable_val);
+
+
+    // 5. Send data
+    while (true) {
+        var data = I2c0.data_cmd.read();
+        data.modify(comptime .combine(&.{
+            .restart(0),
+            .stop(1),
+            .cmd(.write),
+            .data('a')
+        }));
+    }
+}
+
+fn initI2c() void {
+    const clock_pin = 17;
+    const data_pin = 16;
+
+    Reset.reset.atomicClear(.i2c0);
+
+    for (&[_]u8{data_pin, clock_pin}) |pin| {
+        const pad_ctrl = PadsBank0.gpio(pin);
+        pad_ctrl.modify(comptime .combine(&.{
+            .od(0),
+            .ie(1),
+            .pue(1),
+            .pde(0),
+            .schmitt(1),
+            .slewfast(0),
+        }));
+
+        const bank_ctrl = IoBank0.gpioCtrl(pin);
+        bank_ctrl.modify(.funcsel(.i2c));
+    }
+
+    initI2cMasterMode();
+}
+
 pub fn main() !void {
     Reset.reset.atomicClear(.io_bank0);
 
     Xosc.init();
+
+    initClkSys();
 
     Clocks.peri_ctrl.modify(comptime .combine(&.{
         .auxSrc(.xosc),
@@ -183,6 +309,7 @@ pub fn main() !void {
 
     uartInit();
 
+    initI2c();
     initLed();
 
     var i: u32 = 0;

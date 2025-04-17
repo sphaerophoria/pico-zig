@@ -1,4 +1,38 @@
 {
+    "ClkSysCtrl": {
+        "fields": {
+            "auxSrc": {
+                "type": "AuxSrc",
+                "offset": [5, 7]
+            },
+            "src": {
+                "type": "Src",
+                "offset": 0
+            }
+
+        },
+        "enums": {
+            "AuxSrc": {
+                "bit_size": 3,
+                "fields": {
+                    "xosc": 3
+                }
+            },
+            "Src": {
+                "bit_size": 1,
+                "fields": {
+                    "ref": 0,
+                    "aux": 1
+                }
+            }
+        }
+    },
+    "ClkSysSelected": {
+        "fields": {
+            "ref": 0,
+            "aux": 1
+        }
+    },
     "ClkPeriCtrl": {
         "fields": {
             "auxSrc": {
@@ -82,7 +116,7 @@
             "cts": 0
         }
     },
-    "GpioCtrl": {
+    "GpioBankCtrl": {
         "fields": {
             "irqover": [28, 29],
             "inover": [16, 17],
@@ -98,7 +132,33 @@
                 "bit_size": 5,
                 "fields": {
                     "uart": 2,
+                    "i2c": 3,
                     "sio": 5
+                }
+            }
+        }
+    },
+    "GpioPadCtrl": {
+        "fields": {
+            "od": 7,
+            "ie": 6,
+            "drive": {
+                "type": "DriveStrength",
+                "offset": [4,5]
+            },
+            "pue": 3,
+            "pde": 2,
+            "schmitt": 1,
+            "slewfast": 0
+        },
+        "enums": {
+            "DriveStrength": {
+                "bit_size": 2,
+                "fields": {
+                    "ma_2": 0,
+                    "ma_4": 1,
+                    "ma_8": 2,
+                    "ma_12": 3
                 }
             }
         }
@@ -106,7 +166,8 @@
     "Reset": {
         "fields": {
             "uart0": 22,
-            "io_bank0": 5
+            "io_bank0": 5,
+            "i2c0": 3
         }
     },
     "XoscCtrl": {
@@ -160,6 +221,86 @@
                     "mhz_1_15": 0
                 }
             }
+        }
+    },
+    "IcEnable": {
+        "fields": {
+            "tx_cmd_block": 2,
+            "abort": 1,
+            "enable": 0
+        }
+    },
+    "IcCon": {
+        "fields": {
+            "stop_det_if_master_active": 10,
+            "rx_fifo_full_hld_ctrl": 9,
+            "tx_empty_ctrl": 8,
+            "stop_det_ifaddressed": 7,
+            "ic_slave_disable": 6,
+            "ic_restart_en": 5,
+            "ic_10bitaddr_master": 4,
+            "ic_10bitaddr_slave": 3,
+            "speed": {
+                "type": "Speed",
+                "offset": [2,1]
+            },
+            "master_mode": 0
+        },
+        "enums": {
+            "Speed": {
+                "bit_size": 2,
+                "fields": {
+                    "standard": 1,
+                    "fast": 2,
+                    "high_speed": 3
+                }
+            }
+        }
+    },
+    "IcTar": {
+        "fields": {
+            "special": 11,
+            "gc_or_start": 10,
+            "ic_tar": [0, 9]
+        }
+    },
+    "IcDataCmd": {
+        "fields": {
+            "first_data_byte": 11,
+            "restart": 10,
+            "stop": 9,
+            "cmd": {
+                "type": "Cmd",
+                "offset": 8
+            },
+            "data": [0,7]
+        },
+        "enums": {
+            "Cmd": {
+                "bit_size": 1,
+                "fields": {
+                    "write": 0,
+                    "read": 1
+
+                }
+            }
+
+        }
+
+    },
+    "IcSsSclHCnt": {
+        "fields": {
+            "value": [0, 15]
+        }
+    },
+    "IcSsSclLCnt": {
+        "fields": {
+            "value": [0, 15]
+        }
+    },
+    "IcFsSpkLen": {
+        "fields": {
+            "value": [0, 7]
         }
     }
 }
