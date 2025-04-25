@@ -32,6 +32,10 @@ pub fn DefinitionWriter(comptime Writer: type) type {
                 \\        helpers.modifyRegister(self.reg, params.mask, params.val);
                 \\    }}
                 \\
+                \\    pub inline fn atomicSet(self: {0s}, params: WriteMask) void {{
+                \\        helpers.atomicSetRegister(self.reg).* = params.mask;
+                \\    }}
+                \\
                 \\    pub inline fn atomicClear(self: {0s}, params: WriteMask) void {{
                 \\        helpers.atomicClearRegister(self.reg).* = params.mask;
                 \\    }}

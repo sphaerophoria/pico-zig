@@ -302,5 +302,27 @@
         "fields": {
             "value": [0, 7]
         }
+    },
+    "IcTxTl": {
+        "fields": {
+            "value": [0, 7]
+        }
+    },
+    "IcRawIntrStat": {
+        "fields": {
+            "restart_det": 12,
+            "gen_call": 11,
+            "start_det": 10,
+            "stop_det": 9,
+            "activity": 8,
+            "rx_done": 7,
+            "tx_abrt": 6,
+            "rd_req": 5,
+            "tx_empty": 4,
+            "tx_over": 3,
+            "rx_full": 2,
+            "rx_over": 1,
+            "rx_under": 0
+        }
     }
 }

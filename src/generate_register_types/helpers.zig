@@ -71,6 +71,10 @@ pub inline fn modifyRegister(reg: *volatile u32, mask: u32, val: u32) void {
     reg.* = content;
 }
 
+pub fn atomicSetRegister(in: *volatile u32) *volatile u32 {
+    return @ptrFromInt(@as(u32, @intFromPtr(in)) + 0x2000);
+}
+
 pub fn atomicClearRegister(in: *volatile u32) *volatile u32 {
     return @ptrFromInt(@as(u32, @intFromPtr(in)) + 0x3000);
 }

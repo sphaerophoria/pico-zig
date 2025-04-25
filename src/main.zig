@@ -32,6 +32,8 @@ pub fn I2c(comptime base: comptime_int) type {
         const ss_scl_lcnt = registers.IcSsSclLCnt.init(base + 0x18);
         const ss_scl_hcnt = registers.IcSsSclHCnt.init(base + 0x14);
         const fs_spklen = registers.IcFsSpkLen.init(base + 0xa0);
+        const tx_tl = registers.IcTxTl.init(base + 0x3c);
+        const raw_inter_stat = registers.IcRawIntrStat.init(base + 0x34);
     };
 }
 
@@ -68,6 +70,7 @@ const RingOscillator = struct {
 const Reset = struct {
     const base = 0x4000c000;
     const reset = registers.Reset.init(base + 0);
+    const done = registers.Reset.init(base + 8);
 
     const ResetMask = struct {
         pub const io_bank0 = 1 << 5;
@@ -203,6 +206,7 @@ fn initClkSys() void {
 }
 
 fn initI2cMasterMode() void {
+
     // 4.3.10.2.1 in rp2040 datasheet, don't ask me why
 
     var enable_val = I2c0.enable.read();
@@ -226,6 +230,10 @@ fn initI2cMasterMode() void {
         .ic_restart_en(1),
     }));
 
+    // Maybe set tx/rx interrupt fifo watermarks
+    // Maybe set dma
+
+    I2c0.tx_tl.modify(.value(0));
 
     // 3. Set target address
     // Hardcode to EEPROM addy, bottom three bits should be grounded in hw
@@ -235,10 +243,6 @@ fn initI2cMasterMode() void {
         // While we're here, init other fields that sound interesting
         .special(0),
     }));
-
-    const test_val = I2c0.tar.read();
-    _ = test_val;
-    @breakpoint();
 
 
     // Initialize clock parameters. This is not specified in the init master
@@ -259,22 +263,26 @@ fn initI2cMasterMode() void {
 
 
     // 5. Send data
-    while (true) {
-        var data = I2c0.data_cmd.read();
-        data.modify(comptime .combine(&.{
-            .restart(0),
-            .stop(1),
-            .cmd(.write),
-            .data('a')
-        }));
-    }
+    var data = I2c0.data_cmd.read();
+    data.modify(comptime .combine(&.{
+        .restart(0),
+        .stop(1),
+        .cmd(.write),
+        .data('a')
+    }));
+    // Intentionally bypass our rmw helpers to just slam a raw value in there
+    I2c0.data_cmd.reg.* = data.val;
 }
 
 fn initI2c() void {
+    // Take in and out of reset to reset everything :)
+    Reset.reset.atomicSet(.i2c0);
+    Reset.reset.atomicClear(.i2c0);
+    while (Reset.done.read().i2c0() != 1) {}
+
     const clock_pin = 17;
     const data_pin = 16;
 
-    Reset.reset.atomicClear(.i2c0);
 
     for (&[_]u8{data_pin, clock_pin}) |pin| {
         const pad_ctrl = PadsBank0.gpio(pin);
@@ -291,7 +299,9 @@ fn initI2c() void {
         bank_ctrl.modify(.funcsel(.i2c));
     }
 
-    initI2cMasterMode();
+    while (true){
+        initI2cMasterMode();
+    }
 }
 
 pub fn main() !void {
