@@ -46,6 +46,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    exe.addAssemblyFile(b.path("src/functions.S"));
     exe.root_module.addImport("registers", registers_mod);
     exe.bundle_ubsan_rt = false;
     exe.root_module.link_libc = false;

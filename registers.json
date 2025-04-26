@@ -116,6 +116,42 @@
             "cts": 0
         }
     },
+    "GpioInterruptMask0": {
+        "fields": {
+            "gpio7_edge_high":  31,
+            "gpio7_edge_low":  30,
+            "gpio7_level_high":  29,
+            "gpio7_level_low":  28,
+            "gpio6_edge_high":  27,
+            "gpio6_edge_low":  26,
+            "gpio6_level_high":  25,
+            "gpio6_level_low":  24,
+            "gpio5_edge_high":  23,
+            "gpio5_edge_low":  22,
+            "gpio5_level_high":  21,
+            "gpio5_level_low":  20,
+            "gpio4_edge_high":  19,
+            "gpio4_edge_low":  18,
+            "gpio4_level_high":  17,
+            "gpio4_level_low":  16,
+            "gpio3_edge_high":  15,
+            "gpio3_edge_low":  14,
+            "gpio3_level_high":  13,
+            "gpio3_level_low":  12,
+            "gpio2_edge_high":  11,
+            "gpio2_edge_low":  10,
+            "gpio2_level_high":  9,
+            "gpio2_level_low":  8,
+            "gpio1_edge_high":  7,
+            "gpio1_edge_low":  6,
+            "gpio1_level_high":  5,
+            "gpio1_level_low":  4,
+            "gpio0_edge_high":  3,
+            "gpio0_edge_low":  2,
+            "gpio0_level_high":  1,
+            "gpio0_level_low":  0
+        }
+    },
     "GpioBankCtrl": {
         "fields": {
             "irqover": [28, 29],
@@ -323,6 +359,11 @@
             "rx_full": 2,
             "rx_over": 1,
             "rx_under": 0
+        }
+    },
+    "CortexM0PlusVtor": {
+        "fields": {
+            "offs": [8, 31]
         }
     }
 }

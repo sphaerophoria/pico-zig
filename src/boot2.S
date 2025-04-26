@@ -46,6 +46,13 @@ boot2:
 
 	CALL_EXIT_XIP
 
+	@ Make room for 1k stack at end of ram for interrupts
+	@ Note that this overwrites the bootloader, but stack will not be
+	@ touched until we are in _start, where the bootloader does not matter
+	@ anymore
+	ldr r0,=(SRAM_BASE + 255 * 1024)
+	mov sp,r0
+
 	ldr r0,=_start
 	orrs r0, r0, r1
 	bx r0

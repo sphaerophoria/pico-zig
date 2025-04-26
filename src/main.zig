@@ -5,6 +5,18 @@ pub const std_options = std.Options{
     .logFn = uartLog,
 };
 
+extern fn crashMe() void;
+
+const syscfg_nmi_mask: *volatile u32 = @ptrFromInt(0x40004000);
+
+const CortexM0Plus = struct {
+    const base = 0xe0000000;
+    const vtor = registers.CortexM0PlusVtor.init(base + 0xed08);
+    const nvic_icer: *volatile u32 = @ptrFromInt(base + 0xe100);
+    const nvic_iser: *volatile u32 = @ptrFromInt(base + 0xe100);
+    const nvic_icpr: *volatile u32 = @ptrFromInt(base + 0xe280);
+};
+
 pub fn Uart(comptime base: comptime_int) type {
     return struct {
         const periph_id_0: *volatile u32 = @ptrFromInt(base + 0xfe0);
@@ -49,6 +61,11 @@ const Clocks = struct {
 const IoBank0 = struct {
     const base = 0x40014000;
 
+    const intr0 = registers.GpioInterruptMask0.init(base + 0xf0);
+    const proc0_interrupt_enable0 = registers.GpioInterruptMask0.init(base + 0x100);
+    const proc0_interrupt_force0 = registers.GpioInterruptMask0.init(base + 0x110);
+    const proc0_interrupt_status0 = registers.GpioInterruptMask0.init(base + 0x120);
+
     fn gpioCtrl(num: u32) registers.GpioBankCtrl {
         return .init(base + 4 + 8 * num);
     }
@@ -80,7 +97,9 @@ const Reset = struct {
 
 const Sio = struct {
     const base = 0xd0000000;
+    const gpio_in: *volatile u32 = @ptrFromInt(base + 0x004);
     const gpio_oe_set: *volatile u32 = @ptrFromInt(base + 0x024);
+    const gpio_oe_clr: *volatile u32 = @ptrFromInt(base + 0x028);
     const gpio_set: *volatile u32 = @ptrFromInt(base + 0x014);
     const gpio_clr: *volatile u32 = @ptrFromInt(base + 0x018);
 };
@@ -121,6 +140,23 @@ const pico_default_led_pin = 25;
 
 fn regFromAddress(addy: u32) *volatile u32 {
     return @ptrFromInt(addy);
+}
+
+fn initGpioInput(gpio: u5) void {
+    // Set led pin as input
+    Sio.gpio_oe_clr.* = @as(u32, 1) << gpio;
+
+    const pad_ctrl = PadsBank0.gpio(gpio);
+    pad_ctrl.modify(comptime .combine(&.{
+        .od(0),
+        .ie(1),
+        .pue(1),
+        .pde(0),
+        .schmitt(0),
+        .slewfast(0),
+    }));
+
+    IoBank0.gpioCtrl(gpio).modify(.funcsel(.sio));
 }
 
 fn initLed() void {
@@ -304,7 +340,56 @@ fn initI2c() void {
     }
 }
 
+
+// End of ram
+const interrupt_stack = 0x20040000;
+
+const InterruptTable = [42]u32;
+var interrupt_vector_table: InterruptTable align(256) = @splat(0xffffffff);
+
+fn initInterruptTable() void {
+    interrupt_vector_table[0] = interrupt_stack;
+    interrupt_vector_table[11] = @intFromPtr(&svcHandler);
+}
+
+export fn someOtherFn() void {
+    var x: u32 = 4;
+    x += 11;
+    const y = x + 5;
+    _ = y;
+    @breakpoint();
+}
+
+fn svcHandler() void {
+    var x: u32 = 4;
+    x += 11;
+    const y = x + 5;
+    _ = y;
+    someOtherFn();
+}
+
 pub fn main() !void {
+    initInterruptTable();
+    CortexM0Plus.vtor.reg.* = @intFromPtr(&interrupt_vector_table);
+
+    initGpioInput(2);
+    const gpio_val = Sio.gpio_in.*;
+    _ = gpio_val;
+
+    syscfg_nmi_mask.* = 0;
+    IoBank0.intr0.reg.* = 0xffffffff;
+    IoBank0.proc0_interrupt_enable0.modify(.gpio4_edge_low(1));
+
+    var intr_status = IoBank0.intr0.reg.*;
+    var icpr_status = CortexM0Plus.nvic_icpr.*;
+    CortexM0Plus.nvic_iser.* = 1 << (13);
+    CortexM0Plus.nvic_icpr.* = 1 << (13);
+    const nvic_en_mask = CortexM0Plus.nvic_iser.*;
+    _ = nvic_en_mask;
+
+    @breakpoint();
+    //crashMe();
+
     Reset.reset.atomicClear(.io_bank0);
 
     Xosc.init();
@@ -319,11 +404,13 @@ pub fn main() !void {
 
     uartInit();
 
-    initI2c();
+    //initI2c();
     initLed();
 
     var i: u32 = 0;
     while (true) {
+        intr_status = IoBank0.intr0.reg.*;
+        icpr_status = CortexM0Plus.nvic_icpr.*;
         i +%= 1;
         std.log.debug("hello {d}", .{i});
         setLed(true);
