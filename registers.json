@@ -202,6 +202,7 @@
     "Reset": {
         "fields": {
             "uart0": 22,
+            "syscfg": 18,
             "io_bank0": 5,
             "i2c0": 3
         }

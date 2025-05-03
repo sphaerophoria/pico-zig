@@ -1,5 +1,6 @@
 const std = @import("std");
 const registers = @import("registers");
+const interrupts = @import("interrupts.zig");
 
 pub const std_options = std.Options{
     .logFn = uartLog,
@@ -12,8 +13,8 @@ const syscfg_nmi_mask: *volatile u32 = @ptrFromInt(0x40004000);
 const CortexM0Plus = struct {
     const base = 0xe0000000;
     const vtor = registers.CortexM0PlusVtor.init(base + 0xed08);
-    const nvic_icer: *volatile u32 = @ptrFromInt(base + 0xe100);
     const nvic_iser: *volatile u32 = @ptrFromInt(base + 0xe100);
+    const nvic_icer: *volatile u32 = @ptrFromInt(base + 0xe180);
     const nvic_icpr: *volatile u32 = @ptrFromInt(base + 0xe280);
 };
 
@@ -345,11 +346,22 @@ fn initI2c() void {
 const interrupt_stack = 0x20040000;
 
 const InterruptTable = [42]u32;
-var interrupt_vector_table: InterruptTable align(256) = @splat(0xffffffff);
+var interrupt_vector_table: InterruptTable align(256) = @splat(0);
 
 fn initInterruptTable() void {
+    inline for (1..interrupt_vector_table.len) |i| {
+        const s = std.fmt.comptimePrint("doNothing{d}", .{i});
+        interrupt_vector_table[i] = @intFromPtr(&@field(interrupts, s));
+    }
+
     interrupt_vector_table[0] = interrupt_stack;
+    interrupt_vector_table[2] = @intFromPtr(&doNothing);
+    //interrupt_vector_table[22] = @intFromPtr(&doNothing);
     interrupt_vector_table[11] = @intFromPtr(&svcHandler);
+}
+
+fn doNothing() void {
+    @breakpoint();
 }
 
 export fn someOtherFn() void {
@@ -372,25 +384,27 @@ pub fn main() !void {
     initInterruptTable();
     CortexM0Plus.vtor.reg.* = @intFromPtr(&interrupt_vector_table);
 
+    //Reset.reset.atomicClear(.syscfg);
+    //syscfg_nmi_mask.* = 0x00000000;
+
+    Reset.reset.atomicClear(.io_bank0);
+
     initGpioInput(2);
     const gpio_val = Sio.gpio_in.*;
     _ = gpio_val;
 
-    syscfg_nmi_mask.* = 0;
     IoBank0.intr0.reg.* = 0xffffffff;
-    IoBank0.proc0_interrupt_enable0.modify(.gpio4_edge_low(1));
+    IoBank0.proc0_interrupt_enable0.modify(.gpio2_edge_low(1));
 
     var intr_status = IoBank0.intr0.reg.*;
     var icpr_status = CortexM0Plus.nvic_icpr.*;
-    CortexM0Plus.nvic_iser.* = 1 << (13);
-    CortexM0Plus.nvic_icpr.* = 1 << (13);
+    CortexM0Plus.nvic_icpr.* = 0xffffffff;
+    CortexM0Plus.nvic_iser.* = 1 << 13;
     const nvic_en_mask = CortexM0Plus.nvic_iser.*;
     _ = nvic_en_mask;
 
     @breakpoint();
     //crashMe();
-
-    Reset.reset.atomicClear(.io_bank0);
 
     Xosc.init();
 
