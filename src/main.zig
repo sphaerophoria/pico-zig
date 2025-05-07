@@ -35,6 +35,17 @@ pub fn Uart(comptime base: comptime_int) type {
 
 const Uart0 = Uart(0x40034000);
 
+pub fn Pll(comptime base: comptime_int) type {
+    return struct {
+        const cs = registers.PllCs.init(base + 0x0);
+        const pwr = registers.PllPwr.init(base + 0x04);
+        const fbdiv = registers.PllFbdiv.init(base + 0x08);
+        const prim = registers.PllPrim.init(base + 0xc);
+    };
+}
+
+const PllUsb = Pll(0x4002c000);
+
 pub fn I2c(comptime base: comptime_int) type {
     return struct {
         const con = registers.IcCon.init(base + 0x00);
@@ -54,9 +65,21 @@ const I2c0 = I2c(0x40044000);
 
 const Clocks = struct {
     const base = 0x40008000;
+    const ref_ctrl = registers.ClkRefCtrl.init(base + 0x30);
+
     const sys_ctrl = registers.ClkSysCtrl.init(base + 0x3c);
     const sys_selected = registers.ClkSysSelected.init(base + 0x44);
     const peri_ctrl = registers.ClkPeriCtrl.init(base + 0x48);
+
+    const fc0_ref_khz = registers.ClkFc0RefKhz.init(base + 0x80);
+    const fc0_min_khz = registers.ClkFc0MinMaxKhz.init(base + 0x84);
+    const fc0_max_khz = registers.ClkFc0MinMaxKhz.init(base + 0x88);
+    const fc0_interval = registers.ClkFc0Interval.init(base + 0x90);
+    const fc0_status = registers.ClkFc0Status.init(base + 0x98);
+    const fc0_src = registers.ClkFc0Src.init(base + 0x94);
+    const fc0_result = registers.ClkFc0Result.init(base + 0x9c);
+
+    const usb_ctrl = registers.ClkUsbCtrl.init(base + 0x54);
 };
 
 const IoBank0 = struct {
@@ -380,6 +403,62 @@ fn svcHandler() void {
     someOtherFn();
 }
 
+fn initUsbClk() void {
+    Reset.reset.atomicClear(.pll_usb);
+
+    // PLL USB: 12 / 1 = 12MHz * 100 = 1200MHz / 5 / 5 = 48MHz
+    PllUsb.cs.modify(.refdiv(1));
+    PllUsb.fbdiv.modify(.div(100));
+    PllUsb.prim.modify(comptime .combine(&.{
+        .div1(5),
+        .div2(5),
+    }));
+
+    // Turn on everything, pd == powerdown
+    PllUsb.pwr.modify(comptime .combine(&.{
+        .vcopd(0),
+        .postdivpd(0),
+        .pd(0),
+    }));
+
+    while (PllUsb.cs.read().lock() == 0) {}
+
+    Clocks.usb_ctrl.modify(.enable(1));
+}
+
+fn measureClock() void {
+    // status
+    // ref_khz
+    // interval
+    // min_khz
+    // max_khz
+    // src
+
+    while (Clocks.fc0_status.read().running() == 1) {}
+    Clocks.fc0_ref_khz.modify(.freq(12000));
+    // lol copied from rp2040 datasheet which says "FIXME don't pick a random interval";
+    Clocks.fc0_interval.modify(.value(15));
+    Clocks.fc0_min_khz.modify(.freq(0));
+    Clocks.fc0_max_khz.modify(.freq(std.math.maxInt(u25)));
+    Clocks.fc0_src.modify(.src(.clk_usb));
+
+    while (Clocks.fc0_status.read().done() != 1) {}
+
+    const status = Clocks.fc0_status.read();
+    const pass = status.pass();
+    const fast = status.fast();
+    const slow = status.slow();
+    _ = pass;
+    _ = fast;
+    _ = slow;
+
+    const result = Clocks.fc0_result.read();
+    const khz = result.khz();
+    const frac = result.frac();
+    std.log.info("running at {d} khz", .{khz});
+    _ = frac;
+}
+
 pub fn main() !void {
     initInterruptTable();
     CortexM0Plus.vtor.reg.* = @intFromPtr(&interrupt_vector_table);
@@ -403,10 +482,12 @@ pub fn main() !void {
     const nvic_en_mask = CortexM0Plus.nvic_iser.*;
     _ = nvic_en_mask;
 
-    @breakpoint();
+
+    initUsbClk();
     //crashMe();
 
     Xosc.init();
+
 
     initClkSys();
 
@@ -420,6 +501,9 @@ pub fn main() !void {
 
     //initI2c();
     initLed();
+
+    Clocks.ref_ctrl.modify(.src(.xosc));
+    measureClock();
 
     var i: u32 = 0;
     while (true) {

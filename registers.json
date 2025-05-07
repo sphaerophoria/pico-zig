@@ -1,4 +1,20 @@
 {
+    "ClkRefCtrl": {
+        "fields": {
+            "src": {
+                "type": "Src",
+                "offset": [0,1]
+            }
+        },
+        "enums": {
+            "Src": {
+                "bit_size": 2,
+                "fields": {
+                    "xosc": 2
+                }
+            }
+        }
+    },
     "ClkSysCtrl": {
         "fields": {
             "auxSrc": {
@@ -33,6 +49,11 @@
             "aux": 1
         }
     },
+    "ClkUsbCtrl": {
+        "fields": {
+            "enable": 11
+        }
+    },
     "ClkPeriCtrl": {
         "fields": {
             "auxSrc": {
@@ -51,6 +72,68 @@
                     "xosc": 4
                 }
             }
+        }
+    },
+    "ClkFc0Status": {
+        "fields": {
+            "died": 28,
+            "fast": 24,
+            "slow": 20,
+            "fail": 16,
+            "waiting": 12,
+            "running": 8,
+            "done": 4,
+            "pass": 0
+        }
+    },
+    "ClkFc0RefKhz": {
+        "fields": {
+            "freq": [0,19]
+        }
+    },
+    "ClkFc0MinMaxKhz": {
+        "fields": {
+            "freq": [0,24]
+        }
+    },
+    "ClkFc0Interval": {
+        "fields": {
+            "value": [0,3]
+        }
+    },
+    "ClkFc0Src": {
+        "fields": {
+            "src": {
+                "type": "Src",
+                "offset": [0,7]
+            }
+        },
+        "enums": {
+            "Src": {
+                "bit_size": 8,
+                "fields": {
+                    "null": 0,
+                    "pll_sys_clksrc_primary": 1,
+                    "pll_usb_clksrc_primary": 2,
+                    "rosc_clksrc": 3,
+                    "rosc_clksrc_ph": 4,
+                    "xosc_clksrc": 5,
+                    "clksrc_gpin0": 6,
+                    "clksrc_gpin1": 7,
+                    "clk_ref": 8,
+                    "clk_sys": 9,
+                    "clk_peri": 10,
+                    "clk_usb": 11,
+                    "clk_adc": 12,
+                    "clk_rtc": 13
+                }
+            }
+        }
+    },
+    "ClkFc0Result": {
+        "fields": {
+            "khz": [5, 29],
+            "frac": [0,4]
         }
     },
     "UartData": {
@@ -203,6 +286,7 @@
         "fields": {
             "uart0": 22,
             "syscfg": 18,
+            "pll_usb": 13,
             "io_bank0": 5,
             "i2c0": 3
         }
@@ -365,6 +449,31 @@
     "CortexM0PlusVtor": {
         "fields": {
             "offs": [8, 31]
+        }
+    },
+    "PllCs": {
+        "fields": {
+            "refdiv": [0, 5],
+            "bypass": 8,
+            "lock": 31
+        }
+    },
+    "PllFbdiv": {
+        "fields": {
+            "div": [0,11]
+        }
+    },
+    "PllPwr": {
+        "fields": {
+            "vcopd": 5,
+            "postdivpd": 3,
+            "pd": 0
+        }
+    },
+    "PllPrim": {
+        "fields": {
+            "div1": [16,18],
+            "div2": [12,14]
         }
     }
 }
